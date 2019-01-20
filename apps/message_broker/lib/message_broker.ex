@@ -11,13 +11,21 @@ defmodule MessageBroker do
 
   defp loop_acceptor(socket) do
     {:ok, client_socket} = :gen_tcp.accept(socket)
-    serve(client_socket)
+    Task.start_link(fn -> serve(client_socket) end)
     loop_acceptor(socket)
   end
 
   defp serve(socket) do
-    {:ok, packet} = :gen_tcp.recv(socket, 0)
-    IO.inspect(packet)
+    case :gen_tcp.recv(socket, 0) do
+      {:ok, packet} ->
+        IO.inspect(packet)
+
+      {:error, :closed} ->
+        Logger.info("Connection closed.")
+    end
+
+    # {:ok, packet} = :gen_tcp.recv(socket, 0)
+    # IO.inspect(packet)
     serve(socket)
   end
 end

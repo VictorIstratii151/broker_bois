@@ -8,6 +8,7 @@ defmodule MessageBroker.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
+      {Task, fn -> MessageBroker.accept(1337) end}
       # Starts a worker by calling: MessageBroker.Worker.start_link(arg)
       # {MessageBroker.Worker, arg},
     ]
