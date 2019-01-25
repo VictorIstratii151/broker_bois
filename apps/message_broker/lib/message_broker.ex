@@ -2,8 +2,7 @@ defmodule MessageBroker do
   require Logger
 
   def accept(port) do
-    {:ok, socket} =
-      :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true])
+    {:ok, socket} = :gen_tcp.listen(port, [:binary, packet: 0, active: false, reuseaddr: true])
 
     Logger.info("Accepting packets on port #{port}")
     loop_acceptor(socket)
@@ -18,10 +17,14 @@ defmodule MessageBroker do
   defp serve(socket) do
     case :gen_tcp.recv(socket, 0) do
       {:ok, packet} ->
+        IO.inspect("Inpsecting the packet:")
         IO.inspect(packet)
 
       {:error, :closed} ->
         Logger.info("Connection closed.")
+
+      something ->
+        IO.inspect(something)
     end
 
     # {:ok, packet} = :gen_tcp.recv(socket, 0)
