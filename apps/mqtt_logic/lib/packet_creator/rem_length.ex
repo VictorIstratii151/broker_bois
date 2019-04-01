@@ -21,26 +21,28 @@ defmodule RemLength do
     encode_rem_len(encoded_bytes, len)
   end
 
-  def decode_rem_length(encoded_bytes) do
-    multiplier = 1
+  def decode_rem_length(encoded_bytes, value \\ 0, multiplier \\ 1)
 
-    case multiplier < 128 * 128 * 128 do
+  def decode_rem_length([], value, _) do
+    value
+  end
+
+  def decode_rem_length([byte | rest_encoded], value, multiplier) do
+    case multiplier <= 128 * 128 * 128 do
       true ->
-        loop_decode(multiplier, 0, encoded_bytes)
+        value = value + (byte &&& 127) * multiplier
+
+        case byte &&& 128 do
+          0 ->
+            value
+
+          _ ->
+            multiplier = multiplier * 128
+            decode_rem_length(rest_encoded, value, multiplier)
+        end
 
       _ ->
         nil
     end
-  end
-
-  def loop_decode(_, value, []) do
-    value
-  end
-
-  def loop_decode(multiplier, value, [byte | rest_encoded]) do
-    value = value + (byte &&& 127) * multiplier
-    multiplier = multiplier * 128
-
-    loop_decode(multiplier, value, rest_encoded)
   end
 end
