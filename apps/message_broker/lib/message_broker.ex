@@ -1,4 +1,5 @@
 defmodule MessageBroker do
+  use Bitwise
   require Logger
 
   def accept(port) do
@@ -17,28 +18,26 @@ defmodule MessageBroker do
   defp serve(socket) do
     case :gen_tcp.recv(socket, 0) do
       {:ok, packet} ->
-        case String.split(packet, ",") do
-          ["subscribe", topic] ->
-            IO.inspect(packet)
+        <<packet_type::binary-size(1), rest::binary>> = packet
 
-            case :ets.lookup(:topics, topic) do
-              [] ->
-                :ets.insert(:topics, {topic, [socket]})
+        case packet_type do
+          <<0x10>> ->
+            IO.inspect("Incoming CONNECT packet")
 
-              [{topic, clients}] ->
-                :ets.insert(:topics, {topic, clients ++ [socket]})
-            end
+            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
+            fixed_header_length = byte_size(packet) - rem_length
 
-          ["publish", topic, data] ->
-            case :ets.lookup(:topics, topic) do
-              [{_, clients}] ->
-                Enum.map(clients, fn client ->
-                  :gen_tcp.send(client, data)
-                end)
+            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
 
-              [] ->
-                :ok
-            end
+            <<_protocol_length::binary-size(2), "MQTT", _protocol_level::binary-size(1),
+              connect_flags::binary-size(1), _keep_alive::binary-size(2),
+              payload::binary>> = variable_and_payload
+
+            <<client_id_length::binary-size(2), rest_payload::binary>> = payload
+            client_id_length = :binary.decode_unsigned(client_id_length)
+
+            <<client_id::binary-size(client_id_length), _rest::binary>> = rest_payload
+            IO.inspect(client_id)
 
           _ ->
             IO.inspect("sas")
@@ -53,8 +52,6 @@ defmodule MessageBroker do
         Logger.info(something)
     end
 
-    # {:ok, packet} = :gen_tcp.recv(socket, 0)
-    # IO.inspect(packet)
     serve(socket)
   end
 
