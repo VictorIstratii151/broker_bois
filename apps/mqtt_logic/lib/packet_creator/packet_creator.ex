@@ -4,7 +4,7 @@ defmodule PacketCreator do
 
   # def create_packet(type)
 
-  def create_packet(:connect, :clean) do
+  def create_packet(:connect, :clean, client_id) do
     # username, password, will retain, will qos msb, will qos lsb, will flag, clean session, reserved
     flags = [0, 0, 0, 0, 0, 0, 1, 0]
     flags_byte = set_flags(flags)
@@ -20,7 +20,7 @@ defmodule PacketCreator do
         msg_keepalive_lsb()
       ])
 
-    payload = preffix_length(["boi1"], "")
+    payload = preffix_length([client_id])
 
     rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
 
@@ -35,7 +35,34 @@ defmodule PacketCreator do
     fixed_header <> variable_header
   end
 
-  def preffix_length(fields_array, payload)
+  def create_packet(:subscribe, topic, packet_id) do
+    # packet ID set to 0 for QoS0
+    variable_header = <<packet_id::size(16)>>
+
+    # max QoS set to 0 for QoS0
+    payload = preffix_length([topic]) <> <<0>>
+
+    rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
+
+    fixed_header = <<0x82>> <> :binary.list_to_bin(rem_length)
+
+    fixed_header <> variable_header <> payload
+  end
+
+  def create_packet(:suback, packet_id) do
+    # packet ID set to 0 for QoS0
+    variable_header = <<packet_id::size(16)>>
+    # suppose that for now we have only one topic with QoS0, so the success return code is 0
+    payload = <<0>>
+
+    rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
+
+    fixed_header = <<0x90>> <> :binary.list_to_bin(rem_length)
+
+    fixed_header <> variable_header <> payload
+  end
+
+  def preffix_length(fields_array, payload \\ "")
 
   def preffix_length([], payload) do
     payload
