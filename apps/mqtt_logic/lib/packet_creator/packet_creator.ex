@@ -29,6 +29,12 @@ defmodule PacketCreator do
     fixed_header <> variable_header <> payload
   end
 
+  def create_packet(:connack, connect_return_code) do
+    fixed_header = <<0x20, 2>>
+    variable_header = <<0, connect_return_code>>
+    fixed_header <> variable_header
+  end
+
   def preffix_length(fields_array, payload)
 
   def preffix_length([], payload) do
