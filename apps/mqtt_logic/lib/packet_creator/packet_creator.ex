@@ -62,6 +62,19 @@ defmodule PacketCreator do
     fixed_header <> variable_header <> payload
   end
 
+  def create_packet(:publish, topic, message, {dup_flag, qos_level, retain}) do
+    # no packet id due to current QoS0 only
+    variable_header = preffix_length([topic])
+    payload = message
+    rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
+
+    fixed_header =
+      <<0x3::size(4), dup_flag::size(1), qos_level::size(2), retain::size(1)>> <>
+        :binary.list_to_bin(rem_length)
+
+    fixed_header <> variable_header <> payload
+  end
+
   def preffix_length(fields_array, payload \\ "")
 
   def preffix_length([], payload) do
@@ -69,7 +82,7 @@ defmodule PacketCreator do
   end
 
   def preffix_length([head | tail], payload) do
-    preffix_length(tail, payload <> <<byte_size(head)::16>> <> head)
+    preffix_length(tail, payload <> <<byte_size(head)::size(16)>> <> head)
   end
 
   def set_flags(flags_array, byte_offset \\ 7, byte \\ 0)
