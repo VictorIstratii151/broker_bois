@@ -59,8 +59,8 @@ defmodule MessageReceiver do
 
             <<packet_id::binary-size(2), return_code::binary>> = variable_and_payload
 
-            IO.inspect(packet_id)
-            IO.inspect(return_code)
+            msg = PacketCreator.create_packet(:publish, "sooos1", "hahah mda)", {0, 0, 0})
+            send_msg(socket, msg)
 
           _ ->
             IO.inspect("sas")

@@ -62,6 +62,24 @@ defmodule MessageBroker do
             response = PacketCreator.create_packet(:suback, :binary.decode_unsigned(packet_id))
             :gen_tcp.send(socket, response)
 
+          3 ->
+            IO.inspect("Incoming PUBLISH packet")
+
+            <<_dup_flag::size(1), _qos_level::size(2), _retain::size(1)>> =
+              <<rem_packet_type::size(4)>>
+
+            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
+            fixed_header_length = byte_size(packet) - rem_length
+
+            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
+
+            <<topic_length::binary-size(2), rest::binary>> = variable_and_payload
+            topic_length = :binary.decode_unsigned(topic_length)
+            <<topic::binary-size(topic_length), payload::binary>> = rest
+
+            IO.inspect(topic)
+            IO.inspect(payload)
+
           _ ->
             IO.inspect("sas")
         end
