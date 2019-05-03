@@ -36,10 +36,10 @@ defmodule MessageReceiver do
     case :gen_tcp.recv(socket, 0) do
       {:ok, packet} ->
         IO.inspect(packet)
-        <<packet_type::binary-size(1), rest::binary>> = packet
+        <<packet_type::size(4), rem_packet_type::size(4), rest::binary>> = packet
 
         case packet_type do
-          <<0x20>> ->
+          2 ->
             IO.inspect("Incoming CONNACK packet")
 
             rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
@@ -50,7 +50,7 @@ defmodule MessageReceiver do
             response = PacketCreator.create_packet(:subscribe, "sooos1", 0)
             send_msg(socket, response)
 
-          <<0x90>> ->
+          9 ->
             IO.inspect("Incoming SUBACK packet")
             rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
             fixed_header_length = byte_size(packet) - rem_length

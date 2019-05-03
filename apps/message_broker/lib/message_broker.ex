@@ -18,10 +18,10 @@ defmodule MessageBroker do
   defp serve(socket) do
     case :gen_tcp.recv(socket, 0) do
       {:ok, packet} ->
-        <<packet_type::binary-size(1), rest::binary>> = packet
+        <<packet_type::size(4), rem_packet_type::size(4), rest::binary>> = packet
 
         case packet_type do
-          <<0x10>> ->
+          1 ->
             IO.inspect("Incoming CONNECT packet")
 
             rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
@@ -42,9 +42,8 @@ defmodule MessageBroker do
             response = PacketCreator.create_packet(:connack, 0)
             :gen_tcp.send(socket, response)
 
-          <<0x82>> ->
+          8 ->
             IO.inspect("Incoming SUBSCRIBE packet")
-
             rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
             fixed_header_length = byte_size(packet) - rem_length
 
