@@ -42,20 +42,17 @@ defmodule MessageReceiver do
           2 ->
             IO.inspect("Incoming CONNACK packet")
 
-            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
-            fixed_header_length = byte_size(packet) - rem_length
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
-            <<_fixed::binary-size(fixed_header_length), _variable::binary>> = packet
+            response =
+              PacketCreator.create_packet(:subscribe, [{"sas1", 0}, {"sas2", 0}, {"sas3", 0}], 0)
 
-            response = PacketCreator.create_packet(:subscribe, "sooos1", 0)
             send_msg(socket, response)
 
           9 ->
             IO.inspect("Incoming SUBACK packet")
-            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
-            fixed_header_length = byte_size(packet) - rem_length
 
-            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
             <<packet_id::binary-size(2), return_code::binary>> = variable_and_payload
 
@@ -72,7 +69,7 @@ defmodule MessageReceiver do
         :gen_tcp.close(socket)
 
       {:error, :closed} ->
-        IO.inspect("Connection closed.")
+        Logger.info("Connection closed.")
 
       something ->
         IO.inspect(something)
