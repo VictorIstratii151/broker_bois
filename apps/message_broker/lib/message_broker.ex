@@ -24,10 +24,7 @@ defmodule MessageBroker do
           1 ->
             IO.inspect("Incoming CONNECT packet")
 
-            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
-            fixed_header_length = byte_size(packet) - rem_length
-
-            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
             <<_protocol_length::binary-size(2), "MQTT", _protocol_level::binary-size(1),
               _connect_flags::binary-size(1), _keep_alive::binary-size(2),
@@ -37,30 +34,24 @@ defmodule MessageBroker do
             client_id_length = :binary.decode_unsigned(client_id_length)
 
             <<client_id::binary-size(client_id_length), _rest::binary>> = rest_payload
-            IO.inspect(client_id)
 
             response = PacketCreator.create_packet(:connack, 0)
             :gen_tcp.send(socket, response)
 
           8 ->
             IO.inspect("Incoming SUBSCRIBE packet")
-            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
-            fixed_header_length = byte_size(packet) - rem_length
 
-            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
-            <<packet_id::binary-size(2), topic_length::binary-size(2), rest::binary>> =
-              variable_and_payload
+            <<packet_id::binary-size(2), payload::binary>> = variable_and_payload
 
-            topic_length = :binary.decode_unsigned(topic_length)
-            <<topic::binary-size(topic_length), max_qos::binary-size(1)>> = rest
+            topics = PacketHandler.extract_topics(payload)
 
-            IO.inspect(packet_id)
-            IO.inspect(topic)
-            IO.inspect(max_qos)
+            {topics, return_codes} = PacketHandler.store_topics(topics)
 
-            response = PacketCreator.create_packet(:suback, :binary.decode_unsigned(packet_id))
-            :gen_tcp.send(socket, response)
+            # IO.inspect(return_codes)
+
+            response = PacketCreator.create_packet(:suback, packet_id, return_codes)
 
           3 ->
             IO.inspect("Incoming PUBLISH packet")
@@ -68,10 +59,7 @@ defmodule MessageBroker do
             <<_dup_flag::size(1), _qos_level::size(2), _retain::size(1)>> =
               <<rem_packet_type::size(4)>>
 
-            rem_length = RemLength.decode_rem_length(:binary.bin_to_list(rest))
-            fixed_header_length = byte_size(packet) - rem_length
-
-            <<_fixed::binary-size(fixed_header_length), variable_and_payload::binary>> = packet
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
             <<topic_length::binary-size(2), rest::binary>> = variable_and_payload
             topic_length = :binary.decode_unsigned(topic_length)
