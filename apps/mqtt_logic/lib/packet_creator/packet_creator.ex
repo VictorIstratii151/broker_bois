@@ -37,7 +37,7 @@ defmodule PacketCreator do
     # packet ID set to 0 for QoS0
     variable_header = <<packet_id::size(16)>>
 
-    payload = PacketHandler.compose_topics(topics)
+    payload = PacketHandler.compose_topics(:subscribe, topics)
 
     rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
 
@@ -59,11 +59,11 @@ defmodule PacketCreator do
     fixed_header <> variable_header <> payload
   end
 
-  def create_packet(:ubsubscribe, topics, packet_id) do
+  def create_packet(:unsubscribe, topics, packet_id) do
     # packet ID set to 0 for QoS0
     variable_header = <<packet_id::size(16)>>
 
-    payload = PacketHandler.assemble_topics(topics)
+    payload = PacketHandler.assemble_topics(:unsubscribe, topics)
 
     rem_length = RemLength.encode_rem_len([], byte_size(variable_header) + byte_size(payload))
 
