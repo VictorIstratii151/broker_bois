@@ -48,7 +48,9 @@ defmodule PacketCreator do
 
   def create_packet(:suback, packet_id, return_codes) do
     # packet ID set to 0 for QoS0
-    variable_header = <<packet_id::size(16)>>
+    # IO.inspect(packet_id)
+    # variable_header = <<packet_id::size(16)>>
+    variable_header = packet_id
     # suppose that all the topoics have QoS0, so the success return code is 0 for each of them
     payload = :binary.list_to_bin(return_codes)
 
@@ -73,7 +75,7 @@ defmodule PacketCreator do
   end
 
   def create_packet(:unsuback, packet_id, return_codes) do
-    fixed_header = <<B0, 2>>
+    fixed_header = <<0xB0, 2>>
     # packet ID set to 0 for QoS0
     variable_header = <<packet_id::size(16)>>
 

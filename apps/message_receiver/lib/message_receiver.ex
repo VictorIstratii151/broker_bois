@@ -7,7 +7,7 @@ defmodule MessageReceiver do
   def tst() do
     socket = start(1337)
     packet = PacketCreator.create_packet(:connect, :clean, "boi1")
-    IO.inspect(packet)
+    IO.inspect("Sending a CONNECT packet")
     send_msg(socket, packet)
   end
 
@@ -35,32 +35,40 @@ defmodule MessageReceiver do
   def loop(socket) do
     case :gen_tcp.recv(socket, 0) do
       {:ok, packet} ->
-        IO.inspect(packet)
         <<packet_type::size(4), rem_packet_type::size(4), rest::binary>> = packet
 
         case packet_type do
           2 ->
-            IO.inspect("Incoming CONNACK packet")
+            Logger.info("Incoming CONNACK packet")
 
-            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
-
-            response =
-              PacketCreator.create_packet(:subscribe, [{"sas1", 0}, {"sas2", 0}, {"sas3", 0}], 0)
-
-            send_msg(socket, response)
+            {_fixed, _variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
           9 ->
-            IO.inspect("Incoming SUBACK packet")
+            Logger.info("Incoming SUBACK packet")
 
             {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
 
-            <<packet_id::binary-size(2), return_code::binary>> = variable_and_payload
+            <<_packet_id::binary-size(2), _return_codes::binary>> = variable_and_payload
 
-            msg = PacketCreator.create_packet(:publish, "sooos1", "hahah mda)", {0, 0, 0})
-            send_msg(socket, msg)
+          3 ->
+            Logger.info("Incoming PUBLISH packet")
 
-          _ ->
-            IO.inspect("sas")
+            <<_dup_flag::size(1), _qos_level::size(2), _retain::size(1)>> =
+              <<rem_packet_type::size(4)>>
+
+            {_fixed, variable_and_payload} = PacketHandler.divide_packet(packet, rest)
+
+            <<topic_length::binary-size(2), rest::binary>> = variable_and_payload
+            topic_length = :binary.decode_unsigned(topic_length)
+            <<topic::binary-size(topic_length), payload::binary>> = rest
+
+            Logger.info("Analyzing incoming message:")
+            Logger.info("Topic: #{topic}")
+            Logger.info("Data: #{payload}")
+
+          unmatched ->
+            Logger.info(unmatched)
+            IO.inspect("oops")
         end
 
         loop(socket)
@@ -72,6 +80,7 @@ defmodule MessageReceiver do
         Logger.info("Connection closed.")
 
       something ->
+        Logger.info("Unknown error")
         IO.inspect(something)
         loop(socket)
     end

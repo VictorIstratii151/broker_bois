@@ -44,11 +44,11 @@ defmodule PacketHandler do
   end
 
   def extract_connect_flags(flags_byte, flags_array, offset) do
-    IO.inspect(flags_byte)
+    # IO.inspect(flags_byte)
     extract_connect_flags(flags_byte >>> 1, [flags_byte &&& 1 | flags_array], offset + 1)
   end
 
-  def assemble_topics(:unsubscribe, topics_arraym(payload \\ ""))
+  def assemble_topics(packet_type, topics_array, payload \\ "")
 
   def assemble_topics(:unsubscribe, [], payload) do
     payload
@@ -58,7 +58,7 @@ defmodule PacketHandler do
     assemble_topics(:unsubscribe, tail, payload <> <<byte_size(topic)::size(16)>> <> topic)
   end
 
-  def compose_topics(:subscribe, topics_array, payload \\ "")
+  def compose_topics(packet_type, topics_array, payload \\ "")
 
   def compose_topics(:subscribe, [], payload) do
     payload
@@ -78,7 +78,14 @@ defmodule PacketHandler do
     topics
   end
 
-  def store_topics(topics) do
+  def extract_topics(payload, topics) do
+    <<topic_length::binary-size(2), rest::binary>> = payload
+    topic_length = :binary.decode_unsigned(topic_length)
+    <<topic::binary-size(topic_length), requested_qos::binary-size(1), rest::bitstring>> = rest
+    extract_topics(rest, topics ++ [{topic, requested_qos}])
+  end
+
+  def store_topics(topics, socket) do
     Enum.map_reduce(topics, [], fn {topic, qos}, acc ->
       qos =
         case :ets.lookup(:topics, topic) do
@@ -99,13 +106,6 @@ defmodule PacketHandler do
 
       {{topic, qos}, acc ++ [qos]}
     end)
-  end
-
-  def extract_topics(payload, topics) do
-    <<topic_length::binary-size(2), rest::binary>> = payload
-    topic_length = :binary.decode_unsigned(topic_length)
-    <<topic::binary-size(topic_length), requested_qos::binary-size(1), rest::bitstring>> = rest
-    extract_topics(rest, topics ++ [{topic, requested_qos}])
   end
 
   def preffix_length(fields_array, payload \\ "")
